@@ -43,7 +43,7 @@ public extension Data {
             }
         }
         
-        return compressed(bufferSize: count)
+        return perform(compression_encode_buffer, bufferSize: count)
     }
     
     @inlinable
@@ -65,7 +65,7 @@ public extension Data {
         let bufferSize = count * 8
         
         for i in 1...4 {
-            if let data = decompressed(bufferSize: bufferSize * i) {
+            if let data = perform(compression_decode_buffer, bufferSize: bufferSize * i) {
                 return data
             }
         }
@@ -76,7 +76,7 @@ public extension Data {
 
 extension Data {
     @usableFromInline
-    func compressed(bufferSize: Int) -> Data? {
+    func perform(_ action: (UnsafeMutablePointer<UInt8>, Int, UnsafePointer<UInt8>, Int, UnsafeMutableRawPointer?, compression_algorithm) -> Int, bufferSize: Int) -> Data? {
         let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
         var length = 0
         
@@ -89,31 +89,7 @@ extension Data {
                 return
             }
             
-            length = compression_encode_buffer(buffer, bufferSize, unsafePointer, count, nil, COMPRESSION_LZFSE)
-        }
-        
-        guard length > 0 else {
-            return nil
-        }
-        
-        return Data(bytes: buffer, count: length)
-    }
-    
-    @usableFromInline
-    func decompressed(bufferSize: Int) -> Data? {
-        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
-        var length = 0
-        
-        defer {
-            buffer.deallocate()
-        }
-        
-        withUnsafeBytes { bytes in
-            guard let unsafePointer = bytes.bindMemory(to: UInt8.self).baseAddress else {
-                return
-            }
-            
-            length = compression_decode_buffer(buffer, bufferSize, unsafePointer, count, nil, COMPRESSION_LZFSE)
+            length = action(buffer, bufferSize, unsafePointer, count, nil, COMPRESSION_LZFSE)
         }
         
         guard length > 0 else {
