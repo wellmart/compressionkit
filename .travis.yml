@@ -1,0 +1,8 @@
+language: swift
+sudo: required
+
+osx_image: xcode12
+
+script:
+  - swift package generate-xcodeproj
+  - xcodebuild -sdk iphonesimulator -enableCodeCoverage YES clean build
